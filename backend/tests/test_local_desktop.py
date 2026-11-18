@@ -40,6 +40,55 @@ def test_source_mode_works_without_install_key(client, monkeypatch):
     assert client.get("/api/health").status_code == 200
 
 
+def _first_run_payload(prefix: str = "pack"):
+    return {
+        "hotel_name": f"测试酒店 {prefix}",
+        "city": "杭州",
+        "address": "测试路 1 号",
+        "positioning": "精品商务",
+        "admin_username": f"adm_{prefix}",
+        "admin_password": "hotel-pass-9",
+        "room_types": [
+            {
+                "code": "DK",
+                "name": "大床房",
+                "inventory": 12,
+                "base_price": 428,
+                "location": "主楼3层",
+            }
+        ],
+    }
+
+
+def test_packaged_fresh_has_no_demo_login(packaged_client):
+    packaged_client.post("/api/install/activate", json={"install_key": "OIRO-TEST-0000-0000"})
+    bad = packaged_client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert bad.status_code == 401
+
+
+def test_packaged_first_run_then_login(packaged_client):
+    packaged_client.post("/api/install/activate", json={"install_key": "OIRO-TEST-0000-0000"})
+    st = packaged_client.get("/api/install/status").json()
+    assert st["initial_setup_required"] is True
+    assert packaged_client.get("/api/settings").status_code == 503
+    done = packaged_client.post("/api/first-run/complete", json=_first_run_payload("a1"))
+    assert done.status_code == 200, done.text
+    body = done.json()
+    assert body["initial_setup_complete"] is True
+    assert body["hotel_name"].startswith("测试酒店")
+    headers = {"Authorization": f"Bearer {body['access_token']}"}
+    rooms = packaged_client.get("/api/room-types", headers=headers).json()["room_types"]
+    assert len(rooms) == 1
+    assert rooms[0]["location"] == "主楼3层"
+    assert rooms[0]["code"] == "DK"
+    dash = packaged_client.get("/api/dashboard/rooms", headers=headers).json()["rooms"]
+    assert dash[0]["name"] == "大床房"
+    login = packaged_client.post("/api/auth/login", json={"username": "adm_a1", "password": "hotel-pass-9"})
+    assert login.status_code == 200, login.text
+    demo = packaged_client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert demo.status_code == 401
+
+
 def test_packaged_mode_blocks_until_install_key(client, monkeypatch):
     monkeypatch.setenv("OIRO_DISTRIBUTION", "packaged")
     monkeypatch.delenv("OIRO_INSTALL_KEY", raising=False)

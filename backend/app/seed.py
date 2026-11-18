@@ -188,6 +188,7 @@ def seed_hotel(db: Session) -> Hotel:
                 base_price=spec["base_price"],
                 min_price=spec["min_price"],
                 max_price=spec["max_price"],
+                location=spec.get("location", ""),
             )
         )
     db.commit()
@@ -553,6 +554,7 @@ def seed_hotel_b(db: Session) -> Hotel:
                 base_price=spec["base_price"],
                 min_price=spec["min_price"],
                 max_price=spec["max_price"],
+                location=spec.get("location", ""),
             )
         )
     db.commit()
@@ -850,11 +852,20 @@ def reset_database() -> None:
         db.close()
 
 
+def seed_packaged_baseline(db: Session) -> None:
+    seed_settings(db)
+
+
 def ensure_seeded() -> None:
+    from app.services.first_run import demo_seed_allowed
+
     init_db()
     db = SessionLocal()
     try:
-        seed_all(db)
+        if demo_seed_allowed():
+            seed_all(db)
+        else:
+            seed_packaged_baseline(db)
     finally:
         db.close()
 

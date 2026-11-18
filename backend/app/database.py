@@ -145,6 +145,9 @@ def migrate_schema() -> None:
         audit_names = _column_names(conn, "audit_logs")
         if audit_names and "hotel_id" not in audit_names:
             conn.execute(text("ALTER TABLE audit_logs ADD COLUMN hotel_id INTEGER"))
+        room_names = _column_names(conn, "room_types")
+        if room_names and "location" not in room_names:
+            conn.execute(text("ALTER TABLE room_types ADD COLUMN location VARCHAR(128) NOT NULL DEFAULT ''"))
         mem_names = _column_names(conn, "memory_records")
         if mem_names:
             additions = [

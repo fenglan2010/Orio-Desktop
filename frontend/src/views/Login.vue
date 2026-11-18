@@ -18,27 +18,44 @@
       <button class="btn btn-primary" style="width:100%;margin-top:8px" :disabled="loading" type="submit">
         {{ loading ? "登录中…" : "进入工作台" }}
       </button>
-      <div class="hint">
-        演示账号（模拟数据，不连接真实 OTA）：<br />
-        杭州西湖精品酒店（演示）：admin / admin123（酒店管理员）· manager / manager123（收益经理）<br />
-        approver / approver123（调价审批人）· analyst / analyst123（运营观察）<br />
-        成都春熙商务酒店（演示）：admin_b / admin123（仅该店管理员）<br />
-        <router-link class="link" to="/ops/login">运维端登录</router-link>（官方契约和接口由运维配置，请不要在酒店设置里粘贴契约）
+      <div class="hint" v-if="showDemoHint">
+        演示账号（仅源码/开发模式）：杭州西湖精品酒店 admin / admin123 等。正式安装包请使用首次开通时创建的管理员账号。
+        <router-link class="link" to="/ops/login">运维端登录</router-link>
+      </div>
+      <div class="hint" v-else>
+        使用首次开通时创建的本酒店管理员账号登录。连接与契约可在系统设置中稍后配置。
+        <router-link class="link" to="/ops/login">运维端登录</router-link>
       </div>
     </form>
   </div>
 </template>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { api, setToken } from "../api/client";
 import Icon from "../components/Icon.vue";
 
-const username = ref("admin");
-const password = ref("admin123");
+const username = ref("");
+const password = ref("");
+const showDemoHint = ref(false);
 const error = ref("");
 const loading = ref(false);
 const router = useRouter();
+
+onMounted(async () => {
+  try {
+    const st = await api.installStatus();
+    showDemoHint.value = !st.packaged;
+    if (showDemoHint.value) {
+      username.value = "admin";
+      password.value = "admin123";
+    }
+  } catch {
+    showDemoHint.value = true;
+    username.value = "admin";
+    password.value = "admin123";
+  }
+});
 
 async function submit() {
   error.value = "";

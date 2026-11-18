@@ -25,7 +25,9 @@ if (-not (Test-Path $tempZip)) {
   Write-Host "Downloading $EmbedUrl"
   Invoke-WebRequest -Uri $EmbedUrl -OutFile $tempZip -UseBasicParsing
 }
-Expand-Archive -Path $tempZip -DestinationPath $BundleDir -Force
+# Expand-Archive -Force breaks on some GitHub win-2025 + pwsh 7 runners; use BCL zip API.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::ExtractToDirectory($tempZip, $BundleDir)
 
 $pthName = "python311._pth"
 $pthPath = Join-Path $BundleDir $pthName

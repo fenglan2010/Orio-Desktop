@@ -85,22 +85,64 @@
         <!-- hotel -->
         <template v-else-if="section === 'hotel'">
           <div class="section-title">酒店信息</div>
-          <p class="muted">以下档案来自演示数据与看板接口，本轮为只读展示。</p>
+          <p class="muted">本酒店真实档案，保存在本机 SQLite。无 PMS 或尚未接通 API 时，请在下方维护房型档案。</p>
           <div class="form-grid">
-            <div class="field"><label>酒店名称</label><input :value="hotel.name || me.hotel_name || ''" disabled /></div>
-            <div class="field"><label>城市</label><input :value="hotel.city || me.city || ''" disabled /></div>
-            <div class="field" style="grid-column:1 / -1"><label>地址</label><input :value="hotel.address || me.address || ''" disabled /></div>
-            <div class="field"><label>定位</label><input :value="hotel.positioning || me.positioning || ''" disabled /></div>
-            <div class="field"><label>数据来源</label><input value="携程 · 模拟读取 / 官方沙盒写入" disabled /></div>
+            <div class="field"><label>酒店名称</label><input v-model="hotelDraft.name" :disabled="!can('update_policy')" /></div>
+            <div class="field"><label>城市</label><input v-model="hotelDraft.city" :disabled="!can('update_policy')" /></div>
+            <div class="field" style="grid-column:1 / -1"><label>地址</label><input v-model="hotelDraft.address" :disabled="!can('update_policy')" /></div>
+            <div class="field"><label>定位</label><input v-model="hotelDraft.positioning" :disabled="!can('update_policy')" /></div>
+            <div class="field"><label>主渠道</label>
+              <select v-model="hotelDraft.platform" :disabled="!can('update_policy')">
+                <option value="ctrip">携程</option>
+                <option value="meituan">美团</option>
+                <option value="fliggy">飞猪</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px" v-if="can('update_policy')">
+            <button class="btn btn-primary btn-sm" type="button" :disabled="savingHotel" @click="saveHotelProfile">{{ savingHotel ? "保存中…" : "保存酒店档案" }}</button>
           </div>
           <div class="space"></div>
-          <div class="section-title">房型与价格约束</div>
+          <div class="section-title">
+            房型档案
+            <button v-if="can('update_constraints')" class="btn btn-primary btn-sm" type="button" @click="startRoomCreate">+ 添加房型</button>
+          </div>
+          <p class="muted">含代码、名称、数量、基础价与位置。也可在 L3 执行中心 →「房态维护」查看。</p>
+          <div v-if="roomForm" class="subcard" style="background:var(--primary-soft);margin-top:10px">
+            <b>{{ roomForm.id ? "编辑房型" : "新建房型" }}</b>
+            <div class="form-grid" style="margin-top:8px">
+              <div class="field"><label>代码</label><input v-model="roomForm.code" :disabled="!!roomForm.id" /></div>
+              <div class="field"><label>名称</label><input v-model="roomForm.name" /></div>
+              <div class="field"><label>数量</label><input v-model.number="roomForm.inventory" type="number" min="1" /></div>
+              <div class="field"><label>基础价</label><input v-model.number="roomForm.base_price" type="number" min="1" /></div>
+              <div class="field" style="grid-column:1/-1"><label>位置</label><input v-model="roomForm.location" /></div>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button class="btn btn-primary btn-sm" type="button" :disabled="savingRoom" @click="saveRoomForm">{{ savingRoom ? "保存中…" : "保存" }}</button>
+              <button class="btn btn-sm" type="button" @click="roomForm = null">取消</button>
+            </div>
+          </div>
+          <template v-for="r in catalogRooms" :key="r.id">
+            <div class="subcard" style="margin-top:8px">
+              <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <div>
+                  <b>{{ r.name }}</b> <span class="muted">({{ r.code }})</span>
+                  <div class="muted">{{ r.inventory }} 间 · {{ yen(r.base_price) }} · {{ r.location || "未填位置" }}</div>
+                </div>
+                <div class="row" v-if="can('update_constraints')">
+                  <button class="btn btn-sm" type="button" @click="startRoomEdit(r)">编辑</button>
+                  <button class="btn btn-sm" type="button" @click="removeRoom(r)">删除</button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div class="section-title" style="margin-top:16px">价格上下限</div>
           <p class="muted">上下限会在生成调价建议时生效。修改后只影响之后新生成的策略，不会改已有待审方案，也不会写入真实 OTA。</p>
           <template v-for="r in rooms" :key="r.id"><div class="subcard" v-if="constraintDraft[r.id]">
             <div class="row" style="justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px">
               <div>
                 <b>{{ r.name }}</b>
-                <div class="muted">{{ r.inventory }} 间 · 基础价 {{ yen(r.base_price) }}</div>
+                <div class="muted">{{ r.inventory }} 间 · 基础价 {{ yen(r.base_price) }}<span v-if="r.location"> · {{ r.location }}</span></div>
               </div>
               <div class="row" style="gap:8px;align-items:flex-end">
                 <div class="field" style="margin:0">
@@ -327,6 +369,11 @@ const shell = inject("appShell", { me: {} });
 const me = computed(() => shell.me || {});
 const section = ref("accounts");
 const hotel = ref({});
+const hotelDraft = ref({ name: "", city: "", address: "", positioning: "", platform: "ctrip" });
+const catalogRooms = ref([]);
+const roomForm = ref(null);
+const savingHotel = ref(false);
+const savingRoom = ref(false);
 const rooms = ref([]);
 const constraintDraft = ref({});
 const savingConstraints = ref(false);
@@ -417,6 +464,60 @@ async function toggleUser(u, disable) {
     error.value = e.message;
   }
 }
+function syncHotelDraft() {
+  hotelDraft.value = {
+    name: hotel.value.name || me.value.hotel_name || "",
+    city: hotel.value.city || me.value.city || "",
+    address: hotel.value.address || me.value.address || "",
+    positioning: hotel.value.positioning || "",
+    platform: hotel.value.platform || "ctrip",
+  };
+}
+function startRoomCreate() {
+  roomForm.value = { id: null, code: "", name: "", inventory: 10, base_price: 399, location: "" };
+}
+function startRoomEdit(r) {
+  roomForm.value = { id: r.id, code: r.code, name: r.name, inventory: r.inventory, base_price: r.base_price, location: r.location || "" };
+}
+async function saveRoomForm() {
+  savingRoom.value = true;
+  error.value = "";
+  try {
+    const f = roomForm.value;
+    if (f.id) await api.updateRoomType(f.id, f);
+    else await api.createRoomType(f);
+    roomForm.value = null;
+    await load();
+    saved.value = "房型已保存。";
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    savingRoom.value = false;
+  }
+}
+async function removeRoom(r) {
+  if (!confirm(`删除房型「${r.name}」？`)) return;
+  try {
+    await api.deleteRoomType(r.id);
+    await load();
+    saved.value = "房型已删除。";
+  } catch (e) {
+    error.value = e.message;
+  }
+}
+async function saveHotelProfile() {
+  savingHotel.value = true;
+  error.value = "";
+  try {
+    await api.updateSettings({ hotel_profile: { ...hotelDraft.value } });
+    await load();
+    saved.value = "酒店档案已保存。";
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    savingHotel.value = false;
+  }
+}
 async function saveConstraints() {
   savingConstraints.value = true;
   error.value = "";
@@ -462,8 +563,10 @@ async function savePolicy() {
   }
 }
 async function load() {
-  const [s, r, cfg] = await Promise.all([api.summary(), api.rooms(), api.settings()]);
-  hotel.value = s.hotel || {};
+  const [s, r, cfg, cat] = await Promise.all([api.summary(), api.rooms(), api.settings(), api.roomTypes().catch(() => ({ room_types: [] }))]);
+  hotel.value = { ...(cfg.hotel || {}), ...(s.hotel || {}) };
+  syncHotelDraft();
+  catalogRooms.value = cat.room_types || [];
   rooms.value = r.rooms || [];
   syncConstraints(rooms.value);
   if (cfg.execution_policy) policy.value = { ...policy.value, ...cfg.execution_policy };

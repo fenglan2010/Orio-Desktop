@@ -127,6 +127,16 @@ def reset_install_state_for_tests() -> None:
             pass
 
 
+def read_install_state() -> dict[str, Any]:
+    return dict(_read_state())
+
+
+def mark_initial_setup_complete() -> None:
+    state = _read_state()
+    state["initial_setup_complete"] = True
+    _write_state(state)
+
+
 def ensure_data_dirs() -> None:
     from app.config import DATA_DIR, LOCAL_DIR
 

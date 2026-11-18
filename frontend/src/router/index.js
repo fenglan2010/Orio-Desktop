@@ -14,11 +14,13 @@ import Settings from "../views/Settings.vue";
 import OpsLogin from "../views/OpsLogin.vue";
 import OpsConsole from "../views/OpsConsole.vue";
 import InstallActivate from "../views/InstallActivate.vue";
+import FirstRunSetup from "../views/FirstRunSetup.vue";
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: "/install", component: InstallActivate, meta: { public: true } },
+    { path: "/setup", component: FirstRunSetup, meta: { public: true } },
     { path: "/login", component: Login, meta: { public: true } },
     { path: "/ops/login", component: OpsLogin, meta: { public: true, ops: true } },
     { path: "/ops", component: OpsConsole, meta: { ops: true, title: "运维端" } },
@@ -58,13 +60,25 @@ async function ensureMe() {
 }
 
 router.beforeEach(async (to) => {
-  if (to.path !== "/install") {
+  const setupPaths = new Set(["/install", "/setup"]);
+  if (!setupPaths.has(to.path)) {
     try {
       const st = await api.installStatus();
       if (st.blocked) return "/install";
+      if (st.initial_setup_required && !setupPaths.has(to.path)) return "/setup";
     } catch {
       /* offline dev */
     }
+  }
+  if (to.path === "/setup") {
+    try {
+      const st = await api.installStatus();
+      if (st.blocked) return "/install";
+      if (!st.initial_setup_required) return "/login";
+    } catch {
+      return true;
+    }
+    return true;
   }
   if (to.meta.ops) {
     if (to.path === "/ops/login") {

@@ -115,6 +115,37 @@ jobs:
               throw "Root URL did not return HTML (connection error, 404, or timeout)"
             }
             Write-Host "OK: served HTML from bundled python with stripped PATH"
+
+            # Packaged first-run path (no demo seed, no admin/admin123)
+            $activate = Invoke-RestMethod -Uri "http://127.0.0.1:8765/api/install/activate" -Method POST `
+              -ContentType "application/json" -Body '{"install_key":"OIRO-TEST-0000-0000"}'
+            if (-not $activate.activated) { throw "install activate failed" }
+            $status = Invoke-RestMethod -Uri "http://127.0.0.1:8765/api/install/status"
+            if (-not $status.initial_setup_required) { throw "expected initial_setup_required" }
+            $setupBody = @{
+              hotel_name = "CI Pack Hotel"
+              city = "杭州"
+              admin_username = "ci_admin"
+              admin_password = "ci-pass-9"
+              room_types = @(
+                @{
+                  code = "STD"
+                  name = "标准大床"
+                  inventory = 8
+                  base_price = 399
+                  location = "A栋2层"
+                }
+              )
+            } | ConvertTo-Json -Depth 5
+            $done = Invoke-RestMethod -Uri "http://127.0.0.1:8765/api/first-run/complete" -Method POST `
+              -ContentType "application/json" -Body $setupBody
+            if (-not $done.access_token) { throw "first-run complete failed" }
+            $loginFail = try {
+              Invoke-RestMethod -Uri "http://127.0.0.1:8765/api/auth/login" -Method POST `
+                -ContentType "application/json" -Body '{"username":"admin","password":"admin123"}'
+            } catch { $_.Exception.Response.StatusCode.value__ }
+            if ($loginFail -ne 401) { throw "demo admin login should fail with 401" }
+            Write-Host "OK: packaged first-run without demo seed"
           } finally {
             if ($proc -and -not $proc.HasExited) {
               Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue

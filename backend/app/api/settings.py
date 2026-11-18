@@ -76,6 +76,37 @@ def update_cfg(
             after={"overseas_enabled": body.overseas_enabled},
             reason="设置页切换境外模型开关；关键动作仍禁止出境",
         )
+    if body.hotel_profile is not None:
+        require_permission(user, "update_policy")
+        hp = body.hotel_profile
+        if hp.name is not None:
+            name = hp.name.strip()
+            if len(name) < 2:
+                raise HTTPException(status_code=400, detail="酒店名称至少 2 个字符")
+            hotel.name = name
+        if hp.city is not None:
+            hotel.city = hp.city.strip() or "未填写"
+        if hp.address is not None:
+            hotel.address = hp.address.strip()
+        if hp.positioning is not None:
+            hotel.positioning = hp.positioning.strip()
+        if hp.platform is not None:
+            platform = hp.platform.strip().lower()
+            if platform not in {"ctrip", "meituan", "fliggy"}:
+                raise HTTPException(status_code=400, detail="主渠道仅支持携程、美团或飞猪")
+            hotel.platform = platform
+        db.commit()
+        db.refresh(hotel)
+        write_audit(
+            db,
+            actor=user.username,
+            action="update_hotel_profile",
+            entity_type="hotel",
+            entity_id=str(hotel.id),
+            after=public_hotel(hotel),
+            reason="更新酒店档案",
+            hotel_id=hotel.id,
+        )
     if body.execution_policy is not None:
         before = load_execution_policy(db, hotel_id=hotel.id)
         payload = body.execution_policy.model_dump(exclude_unset=True)
