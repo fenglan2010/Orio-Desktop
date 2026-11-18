@@ -1,14 +1,19 @@
 # Build portable embeddable Python 3.11 + backend deps into desktop/python-bundle (packed as resources/python).
 $ErrorActionPreference = "Stop"
-$DesktopRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$DesktopRoot = Split-Path -Parent $ScriptDir
 $RepoRoot = Split-Path -Parent $DesktopRoot
 $BundleDir = Join-Path $DesktopRoot "python-bundle"
 $PyVersion = "3.11.9"
 $EmbedZip = "python-$PyVersion-embed-amd64.zip"
 $EmbedUrl = "https://www.python.org/ftp/python/$PyVersion/$EmbedZip"
 $ReqFile = Join-Path $RepoRoot "backend\requirements.txt"
+if (-not (Test-Path $ReqFile)) {
+  throw "Missing requirements file (expected repo-root backend/requirements.txt): $ReqFile"
+}
 
 Write-Host "=== OIRO embed Python bundle ($PyVersion) ==="
+Write-Host "RepoRoot: $RepoRoot"
 
 if (Test-Path $BundleDir) {
   Remove-Item -Recurse -Force $BundleDir

@@ -4,11 +4,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-Set-Location (Join-Path $Root "desktop")
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$DesktopRoot = Split-Path -Parent $ScriptDir
+$RepoRoot = Split-Path -Parent $DesktopRoot
+Set-Location $DesktopRoot
 
 Write-Host "=== OIRO Windows pack (unsigned, embedded Python) ==="
-Write-Host "Repo root: $Root"
+Write-Host "Repo root: $RepoRoot"
 
 $nodeVersion = (node -v 2>$null)
 if ($nodeVersion -match '^v(\d+)') {
@@ -22,8 +24,8 @@ Write-Host "Ensuring frontend dist..."
 node scripts/ensure-frontend-dist.js --build
 
 Write-Host "Bundling embedded Python + backend deps..."
-& (Join-Path $PSScriptRoot "bundle-embed-python.ps1")
-$bundlePy = Join-Path $Root "desktop\python-bundle\python.exe"
+& (Join-Path $ScriptDir "bundle-embed-python.ps1")
+$bundlePy = Join-Path $DesktopRoot "python-bundle\python.exe"
 if (-not (Test-Path $bundlePy)) { throw "Missing $bundlePy after bundle step" }
 
 $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
@@ -35,7 +37,7 @@ npm run pack:dir
 if ($WithInstaller) {
     Write-Host "Building unsigned NSIS installer..."
     npm run pack:win:nsis
-    $setup = Get-ChildItem -Path (Join-Path $Root "desktop\dist") -Filter "OIRO-Setup-*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+    $setup = Get-ChildItem -Path (Join-Path $DesktopRoot "dist") -Filter "OIRO-Setup-*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($setup) {
         Write-Host "Installer: $($setup.FullName)"
         Write-Warning "Unsigned build: Windows SmartScreen may warn. Distribute only builds you trust."
@@ -44,7 +46,7 @@ if ($WithInstaller) {
     }
 }
 
-$unpacked = Join-Path $Root "desktop\dist\win-unpacked"
+$unpacked = Join-Path $DesktopRoot "dist\win-unpacked"
 $checks = @(
     (Join-Path $unpacked "resources\renderer\index.html"),
     (Join-Path $unpacked "resources\backend\app\main.py"),
