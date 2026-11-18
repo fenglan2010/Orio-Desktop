@@ -43,14 +43,14 @@ def test_source_mode_works_without_install_key(client, monkeypatch):
 def test_packaged_mode_blocks_until_install_key(client, monkeypatch):
     monkeypatch.setenv("OIRO_DISTRIBUTION", "packaged")
     monkeypatch.delenv("OIRO_INSTALL_KEY", raising=False)
-    monkeypatch.setenv("OIRO_INSTALL_KEY_ACCEPT", "OIRO-TEST-0000-0000-0000")
+    monkeypatch.setenv("OIRO_INSTALL_KEY_ACCEPT", "OIRO-TEST-0000-0000")
     reset_install_state_for_tests()
     clear_settings_cache()
     st = client.get("/api/install/status").json()
     assert st["packaged"] is True
     assert st["blocked"] is True
     assert client.get("/api/settings").status_code == 503
-    act = client.post("/api/install/activate", json={"install_key": "OIRO-TEST-0000-0000-0000"})
+    act = client.post("/api/install/activate", json={"install_key": "OIRO-TEST-0000-0000"})
     assert act.status_code == 200, act.text
     assert client.get("/api/health").status_code == 200
 
