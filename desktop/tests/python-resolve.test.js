@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const {
   buildBackendSpec,
   resolvePythonLaunch,
+  resolvePythonForBackend,
   UVICORN_MODULE_ARGS,
 } = require("../lib/python-resolve");
 
@@ -40,4 +41,22 @@ test("resolvePythonLaunch prefers explicit venv path", () => {
   });
   assert.equal(launch.cmd, "C:\\\\Users\\\\x\\\\.venv\\\\Scripts\\\\python.exe");
   assert.deepEqual(launch.argsPrefix, []);
+});
+
+test("resolvePythonForBackend packaged uses bundled only", () => {
+  const bundled = "C:\\\\OIRO\\\\resources\\\\python\\\\python.exe";
+  const launch = resolvePythonForBackend({
+    isPackaged: true,
+    bundledPython: bundled,
+    venvPython: "C:\\\\Desktop\\\\.venv\\\\Scripts\\\\python.exe",
+    platform: "win32",
+  });
+  assert.equal(launch.cmd, bundled);
+  const missing = resolvePythonForBackend({
+    isPackaged: true,
+    bundledPython: null,
+    venvPython: null,
+    platform: "win32",
+  });
+  assert.equal(missing, null);
 });

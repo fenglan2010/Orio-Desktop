@@ -7,6 +7,7 @@ const {
   findVenvPythonFrom,
   resolveBackendDir,
   resolveStaticRoot,
+  resolveBundledPython,
   defaultDistribution,
 } = require("../lib/paths");
 
@@ -77,6 +78,22 @@ test("resolveStaticRoot does not use asar renderer path when only asar has files
   });
   assert.equal(resolved, null);
 
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("resolveBundledPython finds resources/python/python.exe", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oiro-bundle-"));
+  const resources = path.join(root, "resources");
+  const pyDir = path.join(resources, "python");
+  fs.mkdirSync(pyDir, { recursive: true });
+  const py = path.join(pyDir, "python.exe");
+  fs.writeFileSync(py, "");
+
+  const resolved = resolveBundledPython({
+    isPackaged: true,
+    resourcesPath: resources,
+  });
+  assert.equal(resolved, py);
   fs.rmSync(root, { recursive: true, force: true });
 });
 

@@ -61,6 +61,28 @@ function buildBackendSpec({ pythonLaunch, apiPort }) {
   };
 }
 
+/**
+ * Packaged: bundled embed python only (no PATH / conda / source-tree venv required).
+ * Dev: repo .venv first, then system python.
+ */
+function resolvePythonForBackend({
+  isPackaged,
+  bundledPython,
+  venvPython,
+  platform = process.platform,
+}) {
+  if (isPackaged) {
+    if (bundledPython) {
+      return { cmd: bundledPython, argsPrefix: [] };
+    }
+    return null;
+  }
+  if (venvPython) {
+    return { cmd: venvPython, argsPrefix: [] };
+  }
+  return resolvePythonLaunch({ venvPython: null, platform });
+}
+
 const PYTHON_MISSING_MESSAGE_ZH =
   "未找到可用的 Python 环境。\n\n" +
   "请先安装 Python 3.11 或更高版本，并在 OIRO 项目根目录创建虚拟环境：\n" +
@@ -68,10 +90,17 @@ const PYTHON_MISSING_MESSAGE_ZH =
   "  .venv\\Scripts\\pip install -r backend\\requirements.txt\n\n" +
   "若已创建 .venv，请将其放在与 OIRO.exe 同级的项目目录中（向上查找 .venv）。";
 
+const PYTHON_MISSING_PACKAGED_ZH =
+  "正式安装包未能启动内置后端。\n\n" +
+  "无需在本机单独安装 Python 或 conda。请关闭所有 OIRO 窗口后，从开始菜单重新打开；" +
+  "若仍失败，请卸载并安装最新版 OIRO 安装包（应包含 resources\\python\\python.exe）。";
+
 module.exports = {
   resolvePythonLaunch,
+  resolvePythonForBackend,
   buildBackendSpec,
   UVICORN_MODULE_ARGS,
   PYTHON_MISSING_MESSAGE_ZH,
+  PYTHON_MISSING_PACKAGED_ZH,
   probeCommand,
 };
