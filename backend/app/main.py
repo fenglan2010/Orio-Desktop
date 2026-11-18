@@ -12,7 +12,8 @@ from app import __version__
 from app.api import campaigns, alerts, audit, auth, channels, chat, dashboard, diagnosis, evolution, jobs, memories, ops, ops_workbench, pms, reviews, settings, strategies, users, writes
 from app.config import clear_settings_cache, validate_runtime_settings
 from app.middleware.install_gate import InstallGateMiddleware
-from app.api import install_license, local_config
+from app.middleware.setup_gate import SetupGateMiddleware
+from app.api import first_run, install_license, local_config, room_types
 from app.services.local_secrets import apply_local_model_keys_to_environ
 from app.database import init_db, is_postgres_url
 from app.schemas import HealthResponse
@@ -24,6 +25,7 @@ log = logging.getLogger("oiro")
 
 app = FastAPI(title="OIRO", description="OTA 智能收益优化官", version=__version__)
 
+app.add_middleware(SetupGateMiddleware)
 app.add_middleware(InstallGateMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -62,6 +64,8 @@ app.include_router(jobs.router)
 app.include_router(memories.router)
 app.include_router(evolution.router)
 app.include_router(install_license.router)
+app.include_router(first_run.router)
+app.include_router(room_types.router)
 app.include_router(local_config.router)
 
 

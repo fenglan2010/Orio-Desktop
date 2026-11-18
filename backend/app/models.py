@@ -68,6 +68,7 @@ class RoomType(Base):
     base_price: Mapped[float] = mapped_column(Float, nullable=False)
     min_price: Mapped[float] = mapped_column(Float, nullable=False)
     max_price: Mapped[float] = mapped_column(Float, nullable=False)
+    location: Mapped[str] = mapped_column(String(128), default="")
 
     hotel: Mapped[Hotel] = relationship(back_populates="room_types")
 

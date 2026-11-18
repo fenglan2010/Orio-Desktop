@@ -60,6 +60,17 @@
       <!-- inventory -->
       <div v-else-if="tab === 'inventory'">
         <div class="section-title">
+          房态维护（本机房型档案）
+        </div>
+        <p class="muted">未接 PMS 或同步前，在本机维护房型代码、名称、数量、价格与位置。完整编辑见系统设置 → 酒店信息。</p>
+        <div v-if="rooms.length" class="subcard" v-for="r in rooms" :key="r.id" style="margin-bottom:8px">
+          <b>{{ r.name }}</b> <span class="muted">({{ r.code }})</span>
+          <div class="muted">{{ r.inventory }} 间 · {{ yen(r.base_price) }}<span v-if="r.location"> · {{ r.location }}</span></div>
+        </div>
+        <p v-else class="muted">尚未配置房型，请到系统设置添加。</p>
+        <router-link class="link" to="/settings?section=hotel">前往酒店信息与房型</router-link>
+        <div class="space"></div>
+        <div class="section-title">
           渠道配额调整
           <span class="phase-note">后续阶段（本轮未接通）</span>
         </div>

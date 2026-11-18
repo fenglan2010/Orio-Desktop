@@ -171,8 +171,9 @@
       <b>L3 执行型助手</b>：把待人审策略放入执行队列，确认或拒绝；评价回复也在这里完成人审。<br>
       <b>L4 收益运营官</b>：本阶段仅展示自治管理界面，<b>不会自动调价</b>。决策日志接审计记录。<br>
       <b>L5 本店经验沉淀</b>：展示本店已执行或已否决的决策，并可引用匿名行业模式。跨店学习已开始，但是匿名模式，不展示其他酒店名称，不会训练模型，也不会自动改价。</p>
-      <h3>演示账号</h3>
-      <p>杭州西湖精品酒店（演示）：admin / admin123（酒店管理员）、manager / manager123（收益经理）、approver / approver123（调价审批人）、analyst / analyst123（运营观察）。成都春熙商务酒店（演示）：admin_b / admin123（仅该店管理员）。两个酒店的数据互相隔离。</p>
+      <h3 v-if="showDemoHelp">演示账号</h3>
+      <p v-if="showDemoHelp">杭州西湖精品酒店（演示）：admin / admin123（酒店管理员）、manager / manager123（收益经理）、approver / approver123（调价审批人）、analyst / analyst123（运营观察）。成都春熙商务酒店（演示）：admin_b / admin123（仅该店管理员）。两个酒店的数据互相隔离。</p>
+      <p v-else>正式安装包使用首次开通时创建的本酒店账号与房型档案，不会预装演示租户。</p>
     </div>
   </div>
 
@@ -233,6 +234,7 @@ const bellOpen = ref(false);
 const userOpen = ref(false);
 const openChat = ref(false);
 const openHelp = ref(false);
+const showDemoHelp = ref(false);
 const openFeedback = ref(false);
 const feedback = ref(localStorage.getItem("oiro_feedback") || "");
 const feedbackSaved = ref(false);
@@ -378,6 +380,12 @@ onMounted(async () => {
   window.addEventListener("oiro-notify-changed", onNotifyPref);
   document.addEventListener("click", onDoc);
   timer = setInterval(() => { clock.value = formatClock(); }, 1000);
+  try {
+    const st = await api.installStatus();
+    showDemoHelp.value = !st.packaged;
+  } catch {
+    showDemoHelp.value = true;
+  }
   try {
     Object.assign(me, await api.me());
     Object.assign(shellState.me, me);

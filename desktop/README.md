@@ -6,7 +6,7 @@ Electron 壳层在本机启动 FastAPI（SQLite 位于用户数据目录），�
 
 ## 酒店用户
 
-**安装 → 打开 → 输入安装密钥 → 登录**。无需本机 Python、conda 或 `.venv`。
+**安装 → 打开 → 输入安装密钥 → 开通本店（酒店档案、管理员、房型）→ 登录工作台**。不会预装演示酒店或 `admin` / `admin123`。无需本机 Python、conda 或 `.venv`。
 
 ## IT 构建（PowerShell）
 

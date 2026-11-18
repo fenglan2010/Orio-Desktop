@@ -27,7 +27,7 @@ async function submit() {
   error.value = "";
   try {
     await api.activateInstall(key.value);
-    router.replace("/login");
+    router.replace("/setup");
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -38,7 +38,7 @@ async function submit() {
 onMounted(async () => {
   try {
     const st = await api.installStatus();
-    if (!st.blocked) router.replace("/login");
+    if (!st.blocked) router.replace(st.initial_setup_required ? "/setup" : "/login");
   } catch {
     /* backend not ready */
   }

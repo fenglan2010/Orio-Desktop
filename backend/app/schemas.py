@@ -83,9 +83,18 @@ class ExecutionPolicyUpdate(BaseModel):
     write_mode: str | None = None
 
 
+class HotelProfileUpdate(BaseModel):
+    name: str | None = None
+    city: str | None = None
+    address: str | None = None
+    positioning: str | None = None
+    platform: str | None = None
+
+
 class SettingsUpdate(BaseModel):
     overseas_enabled: bool | None = None
     execution_policy: ExecutionPolicyUpdate | None = None
+    hotel_profile: HotelProfileUpdate | None = None
 
 
 class RoomConstraintsUpdate(BaseModel):

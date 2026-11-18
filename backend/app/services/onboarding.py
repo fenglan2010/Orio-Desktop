@@ -212,6 +212,39 @@ def ensure_demo_product_enabled(db: Session, hotel: Hotel, *, actor: str = "syst
     return row
 
 
+def enable_packaged_local_hotel(db: Session, hotel: Hotel, *, actor: str) -> HotelOnboardingAgreement:
+    """Packaged desktop first-run: real hotel on this machine, no ops onboarding flow."""
+    now = _now()
+    row = get_agreement(db, hotel.id)
+    if row is None:
+        row = HotelOnboardingAgreement(
+            hotel_id=hotel.id,
+            status=STATUS_PRODUCT_ENABLED,
+            vendor_state=VENDOR_NOT_CONFIGURED,
+            approval_level=DEFAULT_APPROVAL_REQUIRED,
+            approval_required=DEFAULT_APPROVAL_REQUIRED,
+            initiated_by=actor,
+            initiated_at=now,
+            contract_effective_at=now,
+            payment_confirmed_by=actor,
+            payment_confirmed_at=now,
+            product_enabled_by=actor,
+            product_enabled_at=now,
+            notes="本机正式安装包首次开通。",
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+    if row.status != STATUS_PRODUCT_ENABLED:
+        row.status = STATUS_PRODUCT_ENABLED
+        row.product_enabled_by = row.product_enabled_by or actor
+        row.product_enabled_at = row.product_enabled_at or now
+        db.commit()
+        db.refresh(row)
+    return row
+
+
 def _slug_tenant_key(name: str) -> str:
     raw = re.sub(r"[^a-z0-9]+", "_", (name or "").strip().lower()).strip("_")
     return (raw or "hotel")[:48]

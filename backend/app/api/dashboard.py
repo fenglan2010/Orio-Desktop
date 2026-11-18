@@ -221,6 +221,7 @@ def rooms(db: Session = Depends(get_db), hotel: Hotel = Depends(current_hotel)):
                 "base_price": room.base_price,
                 "min_price": room.min_price,
                 "max_price": room.max_price,
+                "location": getattr(room, "location", "") or "",
                 "revenue": packed["revenue"],
                 "occupancy": packed["occupancy"],
                 "adr": packed["adr"],

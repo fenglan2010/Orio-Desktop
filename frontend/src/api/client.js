@@ -55,6 +55,13 @@ export const api = {
   installStatus: () => request("/api/install/status"),
   activateInstall: (install_key) =>
     request("/api/install/activate", { method: "POST", body: JSON.stringify({ install_key }) }),
+  firstRunStatus: () => request("/api/first-run/status"),
+  completeFirstRun: (payload) =>
+    request("/api/first-run/complete", { method: "POST", body: JSON.stringify(payload) }),
+  roomTypes: () => request("/api/room-types"),
+  createRoomType: (payload) => request("/api/room-types", { method: "POST", body: JSON.stringify(payload) }),
+  updateRoomType: (id, payload) => request(`/api/room-types/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteRoomType: (id) => request(`/api/room-types/${id}`, { method: "DELETE" }),
   localConfig: () => request("/api/local-config"),
   saveLocalModelKeys: (payload) =>
     request("/api/local-config/model-keys", { method: "PUT", body: JSON.stringify(payload) }),
