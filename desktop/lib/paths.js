@@ -76,6 +76,24 @@ function resolveStaticRoot({ isPackaged, resourcesPath, appDir }) {
   return null;
 }
 
+/**
+ * Packaged Windows build ships embed python under resources/python/python.exe.
+ */
+function resolveBundledPython({ isPackaged, resourcesPath }) {
+  if (!isPackaged || !resourcesPath) {
+    return null;
+  }
+  const winExe = path.join(resourcesPath, "python", "python.exe");
+  if (fs.existsSync(winExe)) {
+    return winExe;
+  }
+  const posix = path.join(resourcesPath, "python", "bin", "python3");
+  if (fs.existsSync(posix)) {
+    return posix;
+  }
+  return null;
+}
+
 function pathAnchorsForVenv({ isPackaged, resourcesPath, execPath, appDir }) {
   if (isPackaged) {
     return [
@@ -101,12 +119,18 @@ const STATIC_MISSING_MESSAGE_ZH =
   "  npm run pack:dir\n\n" +
   "若窗口空白且浏览器访问 http://127.0.0.1:8765/ 返回 Not Found，说明 OIRO_STATIC_ROOT 未挂载。";
 
+const BUNDLED_PYTHON_MISSING_ZH =
+  "未找到安装包自带的 Python 运行时（resources\\python）。\n\n" +
+  "请重新下载并安装最新版 OIRO 桌面安装包，或从官方渠道获取完整安装介质。";
+
 module.exports = {
   findVenvPython,
   findVenvPythonFrom,
   resolveBackendDir,
   resolveStaticRoot,
+  resolveBundledPython,
   pathAnchorsForVenv,
   defaultDistribution,
   STATIC_MISSING_MESSAGE_ZH,
+  BUNDLED_PYTHON_MISSING_ZH,
 };

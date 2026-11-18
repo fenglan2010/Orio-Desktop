@@ -20,7 +20,7 @@ on:
 jobs:
   pack-and-serve-frontend:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -32,16 +32,17 @@ jobs:
             frontend/package-lock.json
             desktop/package-lock.json
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Python venv + backend deps
+      - name: Build frontend
         shell: pwsh
+        working-directory: frontend
         run: |
-          python -m venv .venv
-          .\.venv\Scripts\pip install --upgrade pip
-          .\.venv\Scripts\pip install -r backend\requirements.txt
+          npm ci
+          npm run build
+
+      - name: Bundle embedded Python (packaged runtime)
+        shell: pwsh
+        working-directory: desktop
+        run: npm run bundle:python:win
 
       - name: Pack desktop (unsigned dir + NSIS)
         shell: pwsh
@@ -52,38 +53,53 @@ jobs:
           Set-Location desktop
           npm ci
           npm run pack:dir
+          .\scripts\patch-packaged-python-pth.ps1 -UnpackedDir (Resolve-Path "dist\win-unpacked").Path
           npm run pack:win:nsis
 
       - name: Assert unpacked layout
         shell: pwsh
         run: |
-          $backend = "desktop\dist\win-unpacked\resources\backend\app\main.py"
-          $index = "desktop\dist\win-unpacked\resources\renderer\index.html"
-          if (-not (Test-Path $backend)) { throw "Missing $backend" }
-          if (-not (Test-Path $index)) { throw "Missing $index" }
-          Write-Host "OK: backend and renderer on disk"
+          $paths = @(
+            "desktop\dist\win-unpacked\resources\backend\app\main.py",
+            "desktop\dist\win-unpacked\resources\renderer\index.html",
+            "desktop\dist\win-unpacked\resources\python\python.exe"
+          )
+          foreach ($p in $paths) {
+            if (-not (Test-Path $p)) { throw "Missing $p" }
+            Write-Host "OK: $p"
+          }
 
-      - name: HTTP smoke — GET / returns HTML
+      - name: HTTP smoke — bundled python, stripped PATH, HTML at root
         shell: pwsh
         run: |
+          $bundledPy = (Resolve-Path "desktop\dist\win-unpacked\resources\python\python.exe").Path
           $backend = (Resolve-Path "desktop\dist\win-unpacked\resources\backend").Path
           $staticRoot = (Resolve-Path "desktop\dist\win-unpacked\resources\renderer").Path
           $dataDir = Join-Path $env:RUNNER_TEMP "oiro-pack-smoke-data"
           New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 
+          $savedPath = $env:PATH
+          $env:PATH = "$env:SystemRoot\System32"
+          Write-Host "PATH stripped to: $env:PATH"
+
           $env:OIRO_STATIC_ROOT = $staticRoot
-          $env:OIRO_DISTRIBUTION = "source"
+          $env:OIRO_DISTRIBUTION = "packaged"
           $env:OIRO_DATA_DIR = $dataDir
           $env:DATABASE_URL = "sqlite:///$dataDir/oiro.db"
+          $env:OIRO_INSTALL_KEY_ACCEPT = "OIRO-TEST-0000-0000"
 
-          $proc = Start-Process -FilePath ".\.venv\Scripts\python.exe" `
-            -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765") `
+          $proc = Start-Process -FilePath $bundledPy `
+            -ArgumentList @(
+              "-m", "uvicorn", "app.main:app",
+              "--app-dir", $backend,
+              "--host", "127.0.0.1", "--port", "8765"
+            ) `
             -WorkingDirectory $backend `
             -PassThru -NoNewWindow
 
           try {
             $html = $null
-            for ($i = 0; $i -lt 30; $i++) {
+            for ($i = 0; $i -lt 60; $i++) {
               Start-Sleep -Seconds 1
               try {
                 $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8765/" -UseBasicParsing -TimeoutSec 5
@@ -96,13 +112,14 @@ jobs:
               }
             }
             if (-not $html) {
-              throw "Root URL did not return HTML (still 404 or unreachable)"
+              throw "Root URL did not return HTML (connection error, 404, or timeout)"
             }
-            Write-Host "OK: served HTML from OIRO_STATIC_ROOT"
+            Write-Host "OK: served HTML from bundled python with stripped PATH"
           } finally {
             if ($proc -and -not $proc.HasExited) {
               Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
             }
+            $env:PATH = $savedPath
           }
 
       - name: Zip win-unpacked for artifact upload

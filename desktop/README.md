@@ -4,22 +4,20 @@ Electron 壳层在本机启动 FastAPI（SQLite 位于用户数据目录），�
 
 仓库：**https://github.com/fenglan2010/Orio-Desktop**
 
-## 酒店 Windows 主线（PowerShell）
+## 酒店用户
+
+**安装 → 打开 → 输入安装密钥 → 登录**。无需本机 Python、conda 或 `.venv`。
+
+## IT 构建（PowerShell）
 
 ```powershell
 git clone https://github.com/fenglan2010/Orio-Desktop.git Orio-Desktop
 cd Orio-Desktop
-
-python -m venv .venv
-.\.venv\Scripts\pip install -r backend\requirements.txt
-
-# Node 20 LTS 推荐；Node 26+ 可能导致 build/pack 失败
-$env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
-.\desktop\scripts\build-windows.ps1              # 绿色版 win-unpacked
-.\desktop\scripts\build-windows.ps1 -WithInstaller  # 额外生成未签名 NSIS
+# Node 20 LTS 推荐
+.\desktop\scripts\build-windows.ps1 -WithInstaller
 ```
 
-首次运行 `OIRO.exe` → 输入安装密钥 **`OIRO-XXXX-XXXX-XXXX`**（三段）→ 登录 → 按 [docs/配置指南.md](../docs/配置指南.md) 配置模型密钥与 OTA/PMS。
+打包会嵌入 `resources\python\python.exe` + 后端依赖。酒店安装包不读取 PATH 上的 `python`/`py`。
 
 完整说明：[docs/安装指南.md](../docs/安装指南.md) · [docs/操作运行指南.md](../docs/操作运行指南.md)
 
@@ -29,7 +27,10 @@ $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
 $root = "desktop\dist\win-unpacked"
 Test-Path (Join-Path $root "resources\renderer\index.html")   # True
 Test-Path (Join-Path $root "resources\backend\app\main.py")   # True
+Test-Path (Join-Path $root "resources\python\python.exe")    # True
 ```
+
+Electron 会等待 `/api/health` 与根路径 HTML 就绪后再显示窗口；后端失败时弹出中文错误页，不再静默白屏。
 
 ### 前端必须在 `resources\renderer`
 
@@ -37,9 +38,9 @@ Test-Path (Join-Path $root "resources\backend\app\main.py")   # True
 
 典型故障：**窗口空白** + `http://127.0.0.1:8765/` 返回 `{"detail":"Not Found"}` → 未正确打入 `resources\renderer`，需重新构建前端并打包。
 
-### Python 查找（Windows）
+### Python（正式包）
 
-向上查找仓库根 `.venv\Scripts\python.exe` → 系统 `python` → `py -3` → `python3`。缺 Python 时弹中文对话框，而非 `spawn python3 ENOENT`。
+仅 `resources\python\python.exe`。开发模式仍可用仓库 `.venv` 或系统 Python。
 
 ### 未签名构建
 

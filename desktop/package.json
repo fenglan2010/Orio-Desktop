@@ -11,7 +11,8 @@
     "build:frontend": "node scripts/ensure-frontend-dist.js --build",
     "pack:win": "node scripts/ensure-frontend-dist.js --build && electron-builder --win --x64",
     "pack:win:nsis": "node scripts/ensure-frontend-dist.js --build && electron-builder --win nsis --x64",
-    "pack:dir": "node scripts/ensure-frontend-dist.js --build && electron-builder --dir"
+    "pack:dir": "node scripts/ensure-frontend-dist.js --build && electron-builder --dir",
+    "bundle:python:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-embed-python.ps1"
   },
   "devDependencies": {
     "electron": "^33.2.0",
@@ -47,6 +48,11 @@
       {
         "from": "../frontend/dist",
         "to": "renderer",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-bundle",
+        "to": "python",
         "filter": ["**/*"]
       }
     ],
