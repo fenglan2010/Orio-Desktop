@@ -58,14 +58,24 @@ Write-Host "Installing backend requirements (this may take several minutes)..."
 & $pythonExe -m pip install -r $ReqFile
 if ($LASTEXITCODE -ne 0) { throw "pip install -r requirements failed" }
 
-Write-Host "Verifying uvicorn and backend import..."
-$backendDir = Join-Path $RepoRoot "backend"
-$env:PYTHONPATH = $backendDir
-& $pythonExe -c "import uvicorn; import app.main"
-if ($LASTEXITCODE -ne 0) { throw "Cannot import app.main with bundled python" }
-Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+Write-Host "Verifying uvicorn and backend import (same PYTHONPATH as packaged Electron)..."
+$backendDir = (Resolve-Path (Join-Path $RepoRoot "backend")).Path
+$backendForPy = $backendDir -replace "\\", "/"
 
 & $pythonExe -m uvicorn --version
+if ($LASTEXITCODE -ne 0) { throw "uvicorn missing in bundle" }
+
+$verifyPy = Join-Path $env:TEMP "oiro_bundle_verify.py"
+@"
+
+import sys
+sys.path.insert(0, r"$backendForPy")
+import uvicorn
+import app.main
+"@ | Set-Content -Path $verifyPy -Encoding UTF8
+& $pythonExe $verifyPy
+if ($LASTEXITCODE -ne 0) { throw "Cannot import app.main with bundled python" }
+Remove-Item $verifyPy -ErrorAction SilentlyContinue
 if ($LASTEXITCODE -ne 0) { throw "uvicorn missing in bundle" }
 
 Write-Host "OK: python-bundle ready at $BundleDir"
