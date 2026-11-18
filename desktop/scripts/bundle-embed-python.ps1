@@ -76,6 +76,5 @@ import app.main
 & $pythonExe $verifyPy
 if ($LASTEXITCODE -ne 0) { throw "Cannot import app.main with bundled python" }
 Remove-Item $verifyPy -ErrorAction SilentlyContinue
-if ($LASTEXITCODE -ne 0) { throw "uvicorn missing in bundle" }
 
 Write-Host "OK: python-bundle ready at $BundleDir"
