@@ -53,6 +53,7 @@ jobs:
           Set-Location desktop
           npm ci
           npm run pack:dir
+          .\scripts\patch-packaged-python-pth.ps1 -UnpackedDir (Resolve-Path "dist\win-unpacked").Path
           npm run pack:win:nsis
 
       - name: Assert unpacked layout
@@ -86,10 +87,13 @@ jobs:
           $env:OIRO_DATA_DIR = $dataDir
           $env:DATABASE_URL = "sqlite:///$dataDir/oiro.db"
           $env:OIRO_INSTALL_KEY_ACCEPT = "OIRO-TEST-0000-0000"
-          $env:PYTHONPATH = $backend
 
           $proc = Start-Process -FilePath $bundledPy `
-            -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765") `
+            -ArgumentList @(
+              "-m", "uvicorn", "app.main:app",
+              "--app-dir", $backend,
+              "--host", "127.0.0.1", "--port", "8765"
+            ) `
             -WorkingDirectory $backend `
             -PassThru -NoNewWindow
 

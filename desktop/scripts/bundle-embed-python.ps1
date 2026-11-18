@@ -58,23 +58,41 @@ Write-Host "Installing backend requirements (this may take several minutes)..."
 & $pythonExe -m pip install -r $ReqFile
 if ($LASTEXITCODE -ne 0) { throw "pip install -r requirements failed" }
 
-Write-Host "Verifying uvicorn and backend import (same PYTHONPATH as packaged Electron)..."
+Write-Host "Verifying uvicorn --app-dir (no PYTHONPATH; matches packaged Electron)..."
 $backendDir = (Resolve-Path (Join-Path $RepoRoot "backend")).Path
-$backendForPy = $backendDir -replace "\\", "/"
 
 & $pythonExe -m uvicorn --version
 if ($LASTEXITCODE -ne 0) { throw "uvicorn missing in bundle" }
 
-$verifyPy = Join-Path $env:TEMP "oiro_bundle_verify.py"
-@"
+$port = 18976
+$proc = Start-Process -FilePath $pythonExe -ArgumentList @(
+  "-m", "uvicorn", "app.main:app",
+  "--app-dir", $backendDir,
+  "--host", "127.0.0.1",
+  "--port", "$port"
+) -PassThru -NoNewWindow
 
-import sys
-sys.path.insert(0, r"$backendForPy")
-import uvicorn
-import app.main
-"@ | Set-Content -Path $verifyPy -Encoding UTF8
-& $pythonExe $verifyPy
-if ($LASTEXITCODE -ne 0) { throw "Cannot import app.main with bundled python" }
-Remove-Item $verifyPy -ErrorAction SilentlyContinue
+$healthOk = $false
+try {
+  for ($i = 0; $i -lt 45; $i++) {
+    Start-Sleep -Seconds 1
+    try {
+      $resp = Invoke-WebRequest -Uri "http://127.0.0.1:$port/api/health" -UseBasicParsing -TimeoutSec 3
+      if ($resp.StatusCode -eq 200) {
+        $healthOk = $true
+        break
+      }
+    } catch {
+      # retry
+    }
+  }
+} finally {
+  if ($proc -and -not $proc.HasExited) {
+    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+  }
+}
+if (-not $healthOk) {
+  throw "uvicorn --app-dir failed to serve /api/health from bundled python"
+}
 
 Write-Host "OK: python-bundle ready at $BundleDir"

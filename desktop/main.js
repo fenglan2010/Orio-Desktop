@@ -78,7 +78,11 @@ function backendCmd() {
     bundledPython,
     venvPython,
   });
-  const spec = buildBackendSpec({ pythonLaunch, apiPort: API_PORT });
+  const spec = buildBackendSpec({
+    pythonLaunch,
+    apiPort: API_PORT,
+    backendDir,
+  });
   if (!spec) {
     const message = app.isPackaged ? PYTHON_MISSING_PACKAGED_ZH : PYTHON_MISSING_MESSAGE_ZH;
     return { error: message };
@@ -87,6 +91,7 @@ function backendCmd() {
     cmd: spec.cmd,
     args: spec.args,
     cwd: backendDir,
+    useBundledPython: Boolean(bundledPython),
   };
 }
 
@@ -120,10 +125,13 @@ function showMessageWindow(message) {
 
 function startBackend(spec) {
   const env = { ...process.env };
-  const sep = path.delimiter;
-  env.PYTHONPATH = env.PYTHONPATH
-    ? `${spec.cwd}${sep}${env.PYTHONPATH}`
-    : spec.cwd;
+  // Embed/isolated Windows python ignores PYTHONPATH; uvicorn --app-dir is set in buildBackendSpec.
+  if (!spec.useBundledPython) {
+    const sep = path.delimiter;
+    env.PYTHONPATH = env.PYTHONPATH
+      ? `${spec.cwd}${sep}${env.PYTHONPATH}`
+      : spec.cwd;
+  }
 
   backendExitCode = null;
   backendSpawnError = null;

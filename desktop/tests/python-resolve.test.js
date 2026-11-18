@@ -4,17 +4,18 @@ const {
   buildBackendSpec,
   resolvePythonLaunch,
   resolvePythonForBackend,
-  UVICORN_MODULE_ARGS,
+  uvicornModuleArgs,
 } = require("../lib/python-resolve");
 
-test("buildBackendSpec wires uvicorn on venv python", () => {
+test("buildBackendSpec wires uvicorn on venv python with --app-dir", () => {
   const launch = resolvePythonLaunch({
     venvPython: "/tmp/fake/.venv/bin/python",
     platform: "linux",
   });
-  const spec = buildBackendSpec({ pythonLaunch: launch, apiPort: "8765" });
+  const backendDir = "/tmp/fake/oiro/backend";
+  const spec = buildBackendSpec({ pythonLaunch: launch, apiPort: "8765", backendDir });
   assert.equal(spec.cmd, "/tmp/fake/.venv/bin/python");
-  assert.deepEqual(spec.args, UVICORN_MODULE_ARGS("8765"));
+  assert.deepEqual(spec.args, uvicornModuleArgs("8765", backendDir));
 });
 
 test("resolvePythonLaunch on win32 returns py -3 prefix when no venv", () => {

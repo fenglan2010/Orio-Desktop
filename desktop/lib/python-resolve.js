@@ -1,14 +1,27 @@
 const { execFileSync } = require("child_process");
+const path = require("path");
 
-const UVICORN_MODULE_ARGS = (port) => [
-  "-m",
-  "uvicorn",
-  "app.main:app",
-  "--host",
-  "127.0.0.1",
-  "--port",
-  String(port),
-];
+/**
+ * Uvicorn CLI args. Use `backendDir` so embed/isolated Python finds `app` without PYTHONPATH.
+ */
+function uvicornModuleArgs(apiPort, backendDir) {
+  const args = [
+    "-m",
+    "uvicorn",
+    "app.main:app",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(apiPort),
+  ];
+  if (backendDir) {
+    args.push("--app-dir", path.resolve(backendDir));
+  }
+  return args;
+}
+
+/** @deprecated use uvicornModuleArgs(port, backendDir) */
+const UVICORN_MODULE_ARGS = (port) => uvicornModuleArgs(port);
 
 function probeCommand(cmd, args) {
   try {
@@ -51,13 +64,13 @@ function resolvePythonLaunch({ venvPython, platform = process.platform }) {
   return null;
 }
 
-function buildBackendSpec({ pythonLaunch, apiPort }) {
+function buildBackendSpec({ pythonLaunch, apiPort, backendDir }) {
   if (!pythonLaunch) {
     return null;
   }
   return {
     cmd: pythonLaunch.cmd,
-    args: [...pythonLaunch.argsPrefix, ...UVICORN_MODULE_ARGS(apiPort)],
+    args: [...pythonLaunch.argsPrefix, ...uvicornModuleArgs(apiPort, backendDir)],
   };
 }
 
@@ -99,6 +112,7 @@ module.exports = {
   resolvePythonLaunch,
   resolvePythonForBackend,
   buildBackendSpec,
+  uvicornModuleArgs,
   UVICORN_MODULE_ARGS,
   PYTHON_MISSING_MESSAGE_ZH,
   PYTHON_MISSING_PACKAGED_ZH,
