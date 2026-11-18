@@ -1,0 +1,66 @@
+{
+  "name": "oiro-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OIRO local desktop shell (Windows-first)",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "start": "electron .",
+    "test": "node --test tests/*.test.js",
+    "build:frontend": "cd ../frontend && npm ci && npm run build",
+    "pack:win": "node scripts/ensure-frontend-dist.js && electron-builder --win --x64",
+    "pack:dir": "node scripts/ensure-frontend-dist.js && electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.oiro.desktop",
+    "productName": "OIRO",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**/*",
+      "scripts/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/.env",
+          "!**/.env.*",
+          "!**/tests/**",
+          "!data/**",
+          "!**/*.db"
+        ]
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "renderer",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "dir", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "OIRO-Setup-${version}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "extraMetadata": {
+      "oiro": {
+        "note": "Signed Windows installers must be built on Windows; use scripts/build-windows.ps1"
+      }
+    }
+  }
+}

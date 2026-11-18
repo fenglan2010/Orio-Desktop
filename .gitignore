@@ -1,0 +1,29 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+data/
+!data/.gitkeep
+data/*.db
+data/*.db-journal
+data/*.langgraph.db
+data/pg-test/
+data/local/
+frontend/node_modules/
+frontend/dist/
+desktop/node_modules/
+desktop/dist/
+
+# Local secrets, install state, user contracts
+**/install.state.json
+**/model-keys.enc.json
+**/*-secret*.json
+**/contracts/user/**
+**/*.license
+**/*.install-key
+
+# Deploy local overrides — never commit filled secrets
+deploy/compose.env
+deploy/k8s/**/secret.yaml

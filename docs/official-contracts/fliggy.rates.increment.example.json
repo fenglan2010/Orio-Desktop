@@ -1,0 +1,30 @@
+{
+  "platform": "fliggy",
+  "example": true,
+  "version": 1,
+  "source": "Official Taobao/Fliggy Open Platform example only, not auto-loaded. Gateway documented as https://eco.taobao.com/router/rest ; method taobao.xhotel.rates.increment (also taobao.xhotel.rate.update). Requires AppKey, session and official TOP signing supplied by the operator. Default demo must not call this URL.",
+  "base_url": "https://eco.taobao.com",
+  "auth": "header_api_key",
+  "timeout_seconds": 8,
+  "actions": {
+    "apply_price": {
+      "method": "POST",
+      "path": "/router/rest",
+      "request_template": {
+        "method": "taobao.xhotel.rates.increment",
+        "request_id": "{{request_id}}",
+        "hotel_id": "{{platform_hotel_id}}",
+        "items": "{{items}}"
+      },
+      "response_mapping": {
+        "accepted_path": "accepted",
+        "receipt_id_path": "receipt_id",
+        "request_id_path": "request_id",
+        "message_path": "message",
+        "items_path": "items",
+        "item_status_path": "status",
+        "item_id_path": "date"
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "platform": "meituan",
+  "example": true,
+  "version": 1,
+  "source": "Official partner portal: https://openplatform-hotel.meituan.com (MWS partnerId + signature). Exact write path and body are not taken from incomplete public FAQ pages; fill them from the partner contract.",
+  "base_url": "",
+  "auth": "hmac_sha256",
+  "auth_header": "X-Signature",
+  "key_header": "X-Api-Key",
+  "timeout_seconds": 8,
+  "actions": {
+    "apply_price": {
+      "method": "POST",
+      "path": "",
+      "request_template": {
+        "request_id": "{{request_id}}",
+        "hotel_id": "{{platform_hotel_id}}",
+        "items": "{{items}}"
+      },
+      "response_mapping": {
+        "accepted_path": "accepted",
+        "receipt_id_path": "receipt_id",
+        "request_id_path": "request_id",
+        "message_path": "message",
+        "items_path": "items",
+        "item_status_path": "status",
+        "item_id_path": "date"
+      }
+    }
+  }
+}

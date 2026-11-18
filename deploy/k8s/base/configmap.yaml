@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oiro-config
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/part-of: oiro
+data:
+  OIRO_ENV: "production"
+  OIRO_JOB_QUEUE: "celery"
+  OVERSEAS_ENABLED: "false"
+  CTRIP_WRITE_ENABLED: "false"
+  MEITUAN_WRITE_ENABLED: "false"
+  FLIGGY_WRITE_ENABLED: "false"
+  OIRO_INGEST_INTERVAL_SECONDS: "1800"
+  OIRO_WRITE_RETRY_INTERVAL_SECONDS: "120"
+  OIRO_RECONCILE_INTERVAL_SECONDS: "300"

@@ -1,0 +1,233 @@
+# Production-shaped local / single-VM stack.
+# Does not replace the shared SQLite demo on 127.0.0.1:5173 / 8000.
+#
+#   cp deploy/compose.env.example deploy/compose.env
+#   # set JWT_SECRET and POSTGRES_PASSWORD (not the demo JWT secret)
+#   docker compose --env-file deploy/compose.env up -d --build
+#
+# Web entry: http://127.0.0.1:8080
+# API (optional, localhost only): http://127.0.0.1:18000/api/health
+# Postgres and Redis stay on the internal network and are not published.
+#
+# Cloud production should prefer managed 腾讯云 TencentDB / 阿里云 RDS
+# PostgreSQL and managed Redis in a VPC instead of these in-compose
+# databases. In-compose Postgres has no TLS; use sslmode=require (or
+# verify-ca / verify-full) when pointing at cloud RDS.
+
+name: oiro
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oiro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/compose.env}
+      POSTGRES_DB: ${POSTGRES_DB:-oiro}
+    volumes:
+      - oiro_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oiro} -d ${POSTGRES_DB:-oiro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    # Not published. Do not add a host port, and never bind 0.0.0.0.
+    networks:
+      - oiro
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.10"
+          memory: 128M
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - oiro_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Not published. Do not add a host port, and never bind 0.0.0.0.
+    networks:
+      - oiro
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.api
+    image: ${OIRO_API_IMAGE:-oiro-api:local}
+    restart: unless-stopped
+    environment:
+      OIRO_ENV: ${OIRO_ENV:-production}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-oiro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oiro}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/compose.env (not the demo secret)}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      OIRO_JOB_QUEUE: celery
+      OVERSEAS_ENABLED: "false"
+      CTRIP_WRITE_ENABLED: "false"
+      MEITUAN_WRITE_ENABLED: "false"
+      FLIGGY_WRITE_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OIRO_API_PORT:-18000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - oiro
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.15"
+          memory: 128M
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.frontend
+    image: ${OIRO_FRONTEND_IMAGE:-oiro-frontend:local}
+    restart: unless-stopped
+    environment:
+      OIRO_API_UPSTREAM: api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OIRO_WEB_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - oiro
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+        reservations:
+          cpus: "0.05"
+          memory: 16M
+
+  worker:
+    image: ${OIRO_API_IMAGE:-oiro-api:local}
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.api
+    restart: unless-stopped
+    command: ["celery", "-A", "app.jobs.celery_app", "worker", "--loglevel=info"]
+    environment:
+      OIRO_ENV: ${OIRO_ENV:-production}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-oiro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oiro}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/compose.env (not the demo secret)}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      OIRO_JOB_QUEUE: celery
+      OVERSEAS_ENABLED: "false"
+      CTRIP_WRITE_ENABLED: "false"
+      MEITUAN_WRITE_ENABLED: "false"
+      FLIGGY_WRITE_ENABLED: "false"
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - oiro
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.15"
+          memory: 128M
+
+  beat:
+    image: ${OIRO_API_IMAGE:-oiro-api:local}
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.api
+    restart: unless-stopped
+    command:
+      [
+        "celery",
+        "-A",
+        "app.jobs.celery_app",
+        "beat",
+        "--loglevel=info",
+        "--schedule=/tmp/celerybeat-schedule",
+      ]
+    environment:
+      OIRO_ENV: ${OIRO_ENV:-production}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-oiro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oiro}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in deploy/compose.env (not the demo secret)}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/0
+      OIRO_JOB_QUEUE: celery
+      OVERSEAS_ENABLED: "false"
+      CTRIP_WRITE_ENABLED: "false"
+      MEITUAN_WRITE_ENABLED: "false"
+      FLIGGY_WRITE_ENABLED: "false"
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - oiro
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+
+networks:
+  oiro:
+    driver: bridge
+
+volumes:
+  oiro_postgres:
+  oiro_redis:

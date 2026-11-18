@@ -1,0 +1,8 @@
+# Lab only — not production. Not included in the base or TKE/ACK overlays.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: oiro
+resources:
+  - postgres.yaml
+  - redis.yaml
+  - networkpolicy.yaml

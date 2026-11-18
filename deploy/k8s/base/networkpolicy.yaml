@@ -1,0 +1,49 @@
+# Optional starting point. Some CNIs do not enforce NetworkPolicy.
+# Egress is left open so pods can reach VPC RDS, managed Redis, DNS, and
+# domestic model APIs. This is not a complete zero-trust mesh, and it does
+# not justify opening PostgreSQL or Redis to the public internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oiro-frontend-ingress
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/part-of: oiro
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: oiro
+      app.kubernetes.io/component: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oiro-api-ingress
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/part-of: oiro
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: oiro
+      app.kubernetes.io/component: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: oiro
+              app.kubernetes.io/component: frontend
+        # Allow other namespaces (Ingress controllers, kubelet via CNI) to
+        # reach /api if you split paths on the load balancer.
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8000

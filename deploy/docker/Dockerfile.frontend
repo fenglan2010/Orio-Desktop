@@ -1,0 +1,18 @@
+# Multi-stage: build the Vue app, serve with non-root nginx, proxy /api.
+FROM node:22-alpine AS build
+WORKDIR /src
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM nginxinc/nginx-unprivileged:1.27-alpine
+# The unprivileged image already runs as uid 101 and listens on 8080.
+# Templates in /etc/nginx/templates are rendered with envsubst on start.
+COPY deploy/docker/nginx.conf /etc/nginx/templates/default.conf.template
+COPY --from=build /src/dist /usr/share/nginx/html
+ENV OIRO_API_UPSTREAM=api:8000 \
+    NGINX_ENVSUBST_FILTER=OIRO_API_UPSTREAM
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1

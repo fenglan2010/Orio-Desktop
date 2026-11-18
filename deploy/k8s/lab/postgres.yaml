@@ -1,0 +1,103 @@
+# LAB ONLY. Not for production. ClusterIP only — do not expose publicly.
+# Replace the password placeholder before applying; do not commit a real password.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oiro-lab-postgres
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-postgres
+    app.kubernetes.io/part-of: oiro
+    oiro.io/role: lab-only
+type: Opaque
+stringData:
+  POSTGRES_USER: oiro
+  POSTGRES_DB: oiro
+  POSTGRES_PASSWORD: "REPLACE_LAB_POSTGRES_PASSWORD"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oiro-lab-postgres
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-postgres
+    app.kubernetes.io/part-of: oiro
+    oiro.io/role: lab-only
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oiro
+      app.kubernetes.io/component: lab-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oiro
+        app.kubernetes.io/component: lab-postgres
+        app.kubernetes.io/part-of: oiro
+        oiro.io/role: lab-only
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: oiro-lab-postgres
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "oiro", "-d", "oiro"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "oiro", "-d", "oiro"]
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oiro-lab-postgres
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-postgres
+    app.kubernetes.io/part-of: oiro
+    oiro.io/role: lab-only
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

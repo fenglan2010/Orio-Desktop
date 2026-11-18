@@ -1,0 +1,88 @@
+# LAB ONLY. Not for production. ClusterIP only — do not expose publicly.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oiro-lab-redis
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-redis
+    app.kubernetes.io/part-of: oiro
+    oiro.io/role: lab-only
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oiro
+      app.kubernetes.io/component: lab-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oiro
+        app.kubernetes.io/component: lab-redis
+        app.kubernetes.io/part-of: oiro
+        oiro.io/role: lab-only
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          args: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oiro-lab-redis
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-redis
+    app.kubernetes.io/part-of: oiro
+    oiro.io/role: lab-only
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: lab-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis

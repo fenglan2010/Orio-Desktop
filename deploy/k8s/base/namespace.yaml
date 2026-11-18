@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oiro
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/part-of: oiro

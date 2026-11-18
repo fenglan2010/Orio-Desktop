@@ -1,0 +1,23 @@
+{
+  "platform": "crs",
+  "kind": "crs",
+  "example": true,
+  "version": 1,
+  "source": "Placeholder only. Do not invent a production CRS host. Fill base_url and path from a partner contract.",
+  "base_url": "",
+  "auth": "header_api_key",
+  "auth_header": "X-Api-Key",
+  "timeout_seconds": 8,
+  "actions": {
+    "pull_inventory": {
+      "method": "GET",
+      "path": "",
+      "kind": "read"
+    },
+    "pull_reservations": {
+      "method": "GET",
+      "path": "",
+      "kind": "read"
+    }
+  }
+}

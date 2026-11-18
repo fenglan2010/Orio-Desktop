@@ -1,0 +1,38 @@
+{
+  "platform": "pms",
+  "kind": "pms",
+  "example": true,
+  "version": 1,
+  "source": "Placeholder only. Do not invent a production PMS host or claim a live Opera/Cloudbeds/Mews integration. Fill base_url and path from a partner contract.",
+  "base_url": "",
+  "auth": "header_api_key",
+  "auth_header": "X-Api-Key",
+  "timeout_seconds": 8,
+  "actions": {
+    "pull_inventory": {
+      "method": "GET",
+      "path": "",
+      "kind": "read",
+      "request_template": {
+        "request_id": "{{request_id}}",
+        "hotel_id": "{{platform_hotel_id}}",
+        "date_from": "{{date_from}}",
+        "date_to": "{{date_to}}"
+      },
+      "response_mapping": {
+        "items_path": "items",
+        "message_path": "message"
+      }
+    },
+    "pull_room_types": {
+      "method": "GET",
+      "path": "",
+      "kind": "read"
+    },
+    "pull_reservations": {
+      "method": "GET",
+      "path": "",
+      "kind": "read"
+    }
+  }
+}

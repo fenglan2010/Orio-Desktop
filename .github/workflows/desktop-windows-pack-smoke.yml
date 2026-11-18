@@ -1,0 +1,110 @@
+name: Desktop Windows pack smoke
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+    paths:
+      - "desktop/**"
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/desktop-windows-pack-smoke.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/desktop-windows-pack-smoke.yml"
+
+jobs:
+  pack-and-serve-frontend:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python venv + backend deps
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\pip install --upgrade pip
+          .\.venv\Scripts\pip install -r backend\requirements.txt
+
+      - name: Build frontend
+        shell: pwsh
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Pack desktop (unsigned dir)
+        shell: pwsh
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          OIRO_DISTRIBUTION: packaged
+        run: |
+          npm install
+          npm run pack:dir
+
+      - name: Assert unpacked layout
+        shell: pwsh
+        run: |
+          $backend = "desktop\dist\win-unpacked\resources\backend\app\main.py"
+          $index = "desktop\dist\win-unpacked\resources\renderer\index.html"
+          if (-not (Test-Path $backend)) { throw "Missing $backend" }
+          if (-not (Test-Path $index)) { throw "Missing $index" }
+          Write-Host "OK: backend and renderer on disk"
+
+      - name: HTTP smoke — GET / returns HTML
+        shell: pwsh
+        run: |
+          $backend = (Resolve-Path "desktop\dist\win-unpacked\resources\backend").Path
+          $staticRoot = (Resolve-Path "desktop\dist\win-unpacked\resources\renderer").Path
+          $dataDir = Join-Path $env:RUNNER_TEMP "oiro-pack-smoke-data"
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
+          $env:OIRO_STATIC_ROOT = $staticRoot
+          $env:OIRO_DISTRIBUTION = "source"
+          $env:OIRO_DATA_DIR = $dataDir
+          $env:DATABASE_URL = "sqlite:///$dataDir/oiro.db"
+
+          $proc = Start-Process -FilePath ".\.venv\Scripts\python.exe" `
+            -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765") `
+            -WorkingDirectory $backend `
+            -PassThru -NoNewWindow
+
+          try {
+            $html = $null
+            for ($i = 0; $i -lt 30; $i++) {
+              Start-Sleep -Seconds 1
+              try {
+                $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8765/" -UseBasicParsing -TimeoutSec 5
+                if ($resp.StatusCode -eq 200 -and $resp.Content -match "<html") {
+                  $html = $resp.Content
+                  break
+                }
+              } catch {
+                # retry until uvicorn is up
+              }
+            }
+            if (-not $html) {
+              throw "Root URL did not return HTML (still 404 or unreachable)"
+            }
+            Write-Host "OK: served HTML from OIRO_STATIC_ROOT"
+          } finally {
+            if ($proc -and -not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+          }

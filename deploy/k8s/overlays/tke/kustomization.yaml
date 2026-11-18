@@ -1,0 +1,20 @@
+# 腾讯云 TKE overlay. Replace the TCR namespace and tag; do not commit a
+# live registry path that embeds secrets. Prefer TencentDB and managed Redis
+# in the same VPC. TLS terminates at CLB — attach the certificate there.
+#
+#   kubectl apply -k deploy/k8s/overlays/tke
+#   kubectl -n oiro apply -f deploy/k8s/base/secret.yaml   # after filling placeholders
+#
+# Ingress class and hostname still need to be set for your cluster
+# (examples only: qcloud, nginx). This overlay does not invent them.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: oiro-api
+    newName: ccr.ccs.tencentyun.com/YOUR_NAMESPACE/oiro-api
+    newTag: REPLACE_TAG
+  - name: oiro-frontend
+    newName: ccr.ccs.tencentyun.com/YOUR_NAMESPACE/oiro-frontend
+    newTag: REPLACE_TAG

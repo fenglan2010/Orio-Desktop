@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oiro-beat
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: beat
+    app.kubernetes.io/part-of: oiro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oiro
+      app.kubernetes.io/component: beat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oiro
+        app.kubernetes.io/component: beat
+        app.kubernetes.io/part-of: oiro
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: beat
+          image: oiro-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            [
+              "celery",
+              "-A",
+              "app.jobs.celery_app",
+              "beat",
+              "--loglevel=info",
+              "--schedule=/tmp/celerybeat-schedule",
+            ]
+          envFrom:
+            - configMapRef:
+                name: oiro-config
+            - secretRef:
+                name: oiro-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

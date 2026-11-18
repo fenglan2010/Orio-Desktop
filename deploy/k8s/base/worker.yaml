@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oiro-worker
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: oiro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oiro
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oiro
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: oiro
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: oiro-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["celery", "-A", "app.jobs.celery_app", "worker", "--loglevel=info"]
+          envFrom:
+            - configMapRef:
+                name: oiro-config
+            - secretRef:
+                name: oiro-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

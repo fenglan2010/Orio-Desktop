@@ -1,0 +1,30 @@
+{
+  "platform": "ctrip",
+  "example": true,
+  "version": 1,
+  "source": "Placeholder only. No stable public Ctrip hotel-merchant write API was found. Fill base_url and path from a partner contract; do not invent one.",
+  "base_url": "",
+  "auth": "header_api_key",
+  "auth_header": "X-Api-Key",
+  "timeout_seconds": 8,
+  "actions": {
+    "apply_price": {
+      "method": "POST",
+      "path": "",
+      "request_template": {
+        "request_id": "{{request_id}}",
+        "hotel_id": "{{platform_hotel_id}}",
+        "items": "{{items}}"
+      },
+      "response_mapping": {
+        "accepted_path": "accepted",
+        "receipt_id_path": "receipt_id",
+        "request_id_path": "request_id",
+        "message_path": "message",
+        "items_path": "items",
+        "item_status_path": "status",
+        "item_id_path": "date"
+      }
+    }
+  }
+}

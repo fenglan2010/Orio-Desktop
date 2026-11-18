@@ -1,0 +1,37 @@
+# Placeholder Ingress. Do not invent a production hostname, account ID, or
+# cluster URL. TLS should terminate at the cloud load balancer
+# (腾讯云 CLB on TKE, 阿里云 SLB / ALB on ACK). Attach the certificate in
+# the cloud console or via spec.tls once you have one — this file does not
+# ship certificates.
+#
+# Default: send all traffic to the frontend Service; nginx proxies /api to
+# the API. You may instead split /api to oiro-api and / to oiro-frontend
+# on the load balancer if you prefer.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oiro
+  labels:
+    app.kubernetes.io/name: oiro
+    app.kubernetes.io/part-of: oiro
+  annotations:
+    # Set ingress class in the TKE / ACK overlay, or here after you confirm
+    # what the cluster actually uses. Do not assume a single vendor class.
+    # kubernetes.io/ingress.class: REPLACE_WITH_CLUSTER_INGRESS_CLASS
+spec:
+  # ingressClassName: REPLACE_WITH_CLUSTER_INGRESS_CLASS
+  rules:
+    - host: replace-with-your-domain.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oiro-frontend
+                port:
+                  number: 8080
+  # tls:
+  #   - hosts:
+  #       - replace-with-your-domain.example
+  #     secretName: oiro-tls

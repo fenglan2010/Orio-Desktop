@@ -1,0 +1,45 @@
+# LAB ONLY. Limit ingress to in-cluster Postgres/Redis to OIRO app pods.
+# Never change the lab Services to NodePort or LoadBalancer.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oiro-lab-postgres
+  labels:
+    app.kubernetes.io/name: oiro
+    oiro.io/role: lab-only
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: lab-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: oiro
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oiro-lab-redis
+  labels:
+    app.kubernetes.io/name: oiro
+    oiro.io/role: lab-only
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: lab-redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: oiro
+      ports:
+        - protocol: TCP
+          port: 6379
